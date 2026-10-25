@@ -2,8 +2,11 @@ package com.craftworks.music.ui.playing
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,15 +44,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
+import com.craftworks.music.R
+import com.craftworks.music.data.model.LyricSource
 import com.craftworks.music.data.model.LyricsAgentType
+import com.craftworks.music.data.providers.media.local.LocalMediaProvider
 import com.craftworks.music.data.repository.LyricsState
+import com.craftworks.music.managers.MediaProviderManager
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
+import com.craftworks.music.managers.settings.MediaProviderSettingsManager
 import com.craftworks.music.ui.playing.lyrics.SyncedLyricItem
 import com.craftworks.music.ui.playing.lyrics.WordSyncedLyricItem
 import com.gigamole.composefadingedges.FadingEdgesGravity
@@ -431,6 +442,49 @@ fun LyricsView(
                                         currentPositionScroll = lyric.startMs
                                         userScrolled = false
                                     }
+                                )
+                            }
+                        }
+                        item {
+                            val blur: Dp by animateDpAsState(
+                                targetValue = if (useBlur) calculateLyricBlur(
+                                    lyrics.lines.size, currentLyricIndex.intValue + 1, visibleItemsInfo
+                                ) else 0.dp,
+                                label = "Lyric Blur",
+                                animationSpec = tween(lyricsAnimationSpeed / 2, 0, FastOutSlowInEasing)
+                            )
+                            val provider by MediaProviderManager.currentProvider.collectAsStateWithLifecycle()
+                            val url = when (lyrics.source) {
+                                LyricSource.MEDIA_PROVIDER -> {
+                                    stringResource(provider?.providerName ?: androidx.media3.session.R.string.error_message_bad_value)
+                                }
+                                LyricSource.LRCLIB -> MediaProviderSettingsManager(LocalContext.current).lrcLibEndpointFlow.collectAsStateWithLifecycle("https://lrclib.net").value
+                                LyricSource.LRCRED -> "https://lrc.red"
+                                LyricSource.UNISON -> "https://unison.boidu.dev"
+                                LyricSource.NETEASE -> "https://music.163.com"
+                            }
+
+                            val uriHandler = LocalUriHandler.current
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp)
+                                    .height(48.dp)
+                                    .clickable(
+                                        enabled = !(lyrics.source == LyricSource.MEDIA_PROVIDER && provider is LocalMediaProvider),
+                                        onClick = { uriHandler.openUri(url) }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.now_playing_lyrics_credit,
+                                        lyrics.source.displayName
+                                    ),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = color.copy(0.5f),
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }

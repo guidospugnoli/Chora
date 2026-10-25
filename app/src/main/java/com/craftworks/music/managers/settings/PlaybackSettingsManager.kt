@@ -23,6 +23,8 @@ class PlaybackSettingsManager @Inject constructor(
         private val TRANSCODING_BITRATE_DATA_KEY = stringPreferencesKey("transcoding_bitrate_data")
         private val TRANSCODING_FORMAT_KEY = stringPreferencesKey("transcoding_format")
 
+        private val MEDIA3_OFFLOADING = booleanPreferencesKey("media3_offloading")
+
         private val AUTOPLAY_SONGS = booleanPreferencesKey("autoplay")
 
         private val SCROBBLE_PERCENT_KEY = intPreferencesKey("scrobble_percent")
@@ -84,6 +86,18 @@ class PlaybackSettingsManager @Inject constructor(
         withContext(NonCancellable) {
             context.dataStore.edit { preferences ->
                 preferences[AUTOPLAY_SONGS] = autoPlay
+            }
+        }
+    }
+
+    val audioOffloadEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[MEDIA3_OFFLOADING] ?: true
+    }
+
+    suspend fun setAudioOffload(enabled: Boolean) {
+        withContext(NonCancellable) {
+            context.dataStore.edit { preferences ->
+                preferences[MEDIA3_OFFLOADING] = enabled
             }
         }
     }

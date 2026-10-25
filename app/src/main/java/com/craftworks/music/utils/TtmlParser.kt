@@ -15,6 +15,7 @@ import com.gitlab.mvysny.konsumexml.allChildrenAutoIgnore
 import com.gitlab.mvysny.konsumexml.konsumeXml
 
 private const val iTunesNs = "http://music.apple.com/lyric-ttml-internal"
+private const val lrcNs = "http://lrc.red/lyric-ttml-internal"
 private const val xmlNs = "http://www.w3.org/XML/1998/namespace"
 private const val ttmNs = "http://www.w3.org/ns/ttml#metadata"
 
@@ -29,7 +30,8 @@ fun parseTtml(ttml: String, source: LyricSource): Lyrics {
         val lines = mutableListOf<LyricsLine>()
         val agents = mutableListOf<LyricsAgent>()
         k.child("tt") {
-            syncType = when (attributes.getValueOrNull("timing", iTunesNs)) {
+            syncType = when (attributes.getValueOrNull("timing", iTunesNs) ?:
+            attributes.getValueOrNull("timing", lrcNs)) {
                 "Word" -> SyncType.WORD
                 "Line" -> SyncType.LINE
                 else -> SyncType.NONE
@@ -57,6 +59,7 @@ fun parseTtml(ttml: String, source: LyricSource): Lyrics {
             }
         }
         println("lyrics agents: $agents")
+
         Lyrics(
             syncType = syncType,
             source = source,

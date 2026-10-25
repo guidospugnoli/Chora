@@ -20,6 +20,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,7 @@ import com.craftworks.music.data.providers.media.local.LocalMediaProvider
 import com.craftworks.music.data.providers.media.subsonic.SubsonicMediaProvider
 import com.craftworks.music.managers.DataRefreshManager
 import com.craftworks.music.managers.MediaProviderManager
+import com.craftworks.music.managers.settings.MediaProviderSettingsManager
 
 @OptIn(ExperimentalTvMaterial3Api::class, ExperimentalTvMaterial3Api::class)
 @Composable
@@ -169,6 +171,23 @@ fun TvLyricsProviderCard(
 ) {
     val (itemFocus, upFocus, downFocus) = remember { FocusRequester.createRefs() }
 
+    val context = LocalContext.current
+    val mediaProvider by MediaProviderManager.currentProvider.collectAsStateWithLifecycle()
+
+    val url = when (provider.source) {
+        LyricSource.MEDIA_PROVIDER -> {
+            when (mediaProvider) {
+                is LocalMediaProvider -> stringResource(R.string.source_local_folder)
+                is SubsonicMediaProvider -> (mediaProvider as SubsonicMediaProvider).providerData.url
+                else -> ""
+            }
+        }
+        LyricSource.LRCLIB -> MediaProviderSettingsManager(context).lrcLibEndpointFlow.collectAsStateWithLifecycle("https://lrclib.net").value
+        LyricSource.LRCRED -> "https://lrc.red"
+        LyricSource.UNISON -> "https://unison.boidu.dev"
+        LyricSource.NETEASE -> "https://music.163.com"
+    }
+
     ListItem(
         modifier = Modifier
             .focusRequester(itemFocus)
@@ -188,6 +207,13 @@ fun TvLyricsProviderCard(
             Text(
                 text = provider.source.displayName,
                 style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier
+            )
+        },
+        supportingContent = {
+            Text(
+                text = url,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier
             )
         },

@@ -2,11 +2,13 @@ package com.craftworks.music.data.providers.lyrics.lrcred
 
 import android.content.Context
 import androidx.media3.common.MediaMetadata
+import com.craftworks.music.data.model.LrcRedSearchResponse
 import com.craftworks.music.data.model.LyricSource
 import com.craftworks.music.data.model.Lyrics
 import com.craftworks.music.utils.parseTtml
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.cache.HttpCache
@@ -17,7 +19,10 @@ import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.logging.SIMPLE
 import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
@@ -66,29 +71,52 @@ class LrcRedDataSource @Inject constructor(
 
         try {
             if (!isrc.isNullOrEmpty()) {
-                val response = client.get("https://lrc.red/s/$isrc.ttml").bodyAsText()
+                val response = client.get("https://lrc.red/s/$isrc.ttml") {
+                    header(
+                        HttpHeaders.UserAgent,
+                        "Chora - Navidrome Client (https://github.com/CraftWorksMC/Chora)"
+                    )
+
+                    if (ignoreCachedResponse)
+                        header(HttpHeaders.CacheControl, "no-cache")
+                    else
+                        header(HttpHeaders.CacheControl, "max-stale=2592000")
+                }.bodyAsText()
                 val ttml = parseTtml(response, LyricSource.LRCRED)
                 return@withContext ttml
             } else {
-//                client.get("https://lrc.red/s/") {
-//                    parameter("artist", artist)
-//                    parameter("track", title)
-//                    parameter("album", album)
-//                    parameter("duration", duration)
-//
-//                    header(
-//                        HttpHeaders.UserAgent,
-//                        "Chora - Navidrome Client (https://github.com/CraftWorksMC/Chora)"
-//                    )
-//
-//                    if (ignoreCachedResponse)
-//                        header(HttpHeaders.CacheControl, "no-cache")
-//                    else
-//                        header(HttpHeaders.CacheControl, "max-stale=2592000")
-//                }
-            }
+                val response = client.get("https://lrc.red/search.json") {
+                    val searchQuery = "$title $artist"
 
-            return@withContext null
+                    parameter("q", searchQuery)
+
+                    header(
+                        HttpHeaders.UserAgent,
+                        "Chora - Navidrome Client (https://github.com/CraftWorksMC/Chora)"
+                    )
+
+                    if (ignoreCachedResponse)
+                        header(HttpHeaders.CacheControl, "no-cache")
+                    else
+                        header(HttpHeaders.CacheControl, "max-stale=2592000")
+                }.body<LrcRedSearchResponse>()
+
+                val isrc = response.hits[0].isrc
+
+                val ttml = client.get("https://lrc.red/s/${isrc}.ttml") {
+                    header(
+                        HttpHeaders.UserAgent,
+                        "Chora - Navidrome Client (https://github.com/CraftWorksMC/Chora)"
+                    )
+
+                    if (ignoreCachedResponse)
+                        header(HttpHeaders.CacheControl, "no-cache")
+                    else
+                        header(HttpHeaders.CacheControl, "max-stale=2592000")
+                }.bodyAsText()
+
+                return@withContext parseTtml(ttml, LyricSource.LRCRED)
+            }
         } catch (e: ClientRequestException) {
             if (e.response.status == HttpStatusCode.NotFound) {
                 return@withContext null

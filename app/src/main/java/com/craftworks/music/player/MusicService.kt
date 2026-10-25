@@ -307,11 +307,6 @@ class ChoraMediaLibraryService : MediaLibraryService() {
             }
         )
 
-        val audioOffloadPreferences =
-            TrackSelectionParameters.AudioOffloadPreferences.Builder()
-                .setAudioOffloadMode(TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED)
-                .build()
-
         player = ExoPlayer.Builder(this)
             .setSeekParameters(SeekParameters.EXACT)
             .setMediaSourceFactory(DefaultMediaSourceFactory(resolvingDataSourceFactory))
@@ -328,7 +323,15 @@ class ChoraMediaLibraryService : MediaLibraryService() {
             .experimentalSetDynamicSchedulingEnabled(false) // Temporary fix for lyrics. refer to https://github.com/androidx/media/issues/3286
             .build()
 
-        // todo: make it a setting
+        val audioOffload = runBlocking { playbackSettingsManager.audioOffloadEnabled.first() }
+        val audioOffloadPreferences =
+            TrackSelectionParameters.AudioOffloadPreferences.Builder()
+                .setAudioOffloadMode(
+                    if (audioOffload)
+                        TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED
+                    else
+                        TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_DISABLED
+                ).build()
         player.trackSelectionParameters =
             player.trackSelectionParameters
                 .buildUpon()
@@ -434,15 +437,26 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         }
 
         serviceMainScope.launch {
-            transcodeManager.transcodingConfigChangesFlow
-                .distinctUntilChanged()
-                .collect {
-                    if (player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING) {
-                        if (player.currentTimeline.isEmpty.not()) {
-                            updateTranscodingDuringPlayback()
+            launch {
+                transcodeManager.transcodingConfigChangesFlow
+                    .distinctUntilChanged()
+                    .collect {
+                        if (player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING) {
+                            if (player.currentTimeline.isEmpty.not()) {
+                                updateTranscodingDuringPlayback()
+                            }
                         }
                     }
-                }
+            }
+
+            launch {
+                playbackSettingsManager.audioOffloadEnabled
+                    .distinctUntilChanged()
+                    .collect { enabled ->
+                        updateAudioOffload(enabled)
+                        Log.d("PLAYER", "Audio offload updated to: $enabled")
+                    }
+            }
         }
 
         Log.d("AA", "Initialized MediaLibraryService.")
@@ -741,6 +755,22 @@ class ChoraMediaLibraryService : MediaLibraryService() {
         if (wasPlaying) {
             player.play()
         }
+    }
+
+    private fun updateAudioOffload(enabled: Boolean) {
+        val audioOffloadPreferences = TrackSelectionParameters.AudioOffloadPreferences.Builder()
+            .setAudioOffloadMode(
+                if (enabled)
+                    TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED
+                else
+                    TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_DISABLED
+            )
+            .build()
+
+        player.trackSelectionParameters = player.trackSelectionParameters
+            .buildUpon()
+            .setAudioOffloadPreferences(audioOffloadPreferences)
+            .build()
     }
 
     override fun onDestroy() {

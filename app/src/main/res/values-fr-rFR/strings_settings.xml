@@ -52,6 +52,7 @@
     <string name="playback_max_bitrate_mobile_data">Bande passante maximum (en données mobiles)</string>
     <string name="playback_transcoding_format">Format de transcodage</string>
     <string name="playback_no_transcoding">Pas de transcodage</string>
+    <string name="playback_audio_offloading">Offload Audio</string>
     <string name="playback_min_scrobble_percentage">Pourcentage minimum pour scrobbler</string>
     <string name="settings_misc">Divers</string>
     <string name="misc_download_template">Pattern de téléchargement</string>

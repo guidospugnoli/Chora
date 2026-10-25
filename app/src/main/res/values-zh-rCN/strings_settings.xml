@@ -52,6 +52,7 @@
     <string name="playback_max_bitrate_mobile_data">最高比特率（移动数据）</string>
     <string name="playback_transcoding_format">转码格式</string>
     <string name="playback_no_transcoding">No Transcoding</string>
+    <string name="playback_audio_offloading">Offload Audio</string>
     <string name="playback_min_scrobble_percentage">最低收听记录百分比</string>
     <string name="settings_misc">Miscellaneous</string>
     <string name="misc_download_template">Download Template</string>

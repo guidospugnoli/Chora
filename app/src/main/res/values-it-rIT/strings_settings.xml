@@ -52,6 +52,7 @@
     <string name="playback_max_bitrate_mobile_data">Bitrate Massimo (Dati Mobili)</string>
     <string name="playback_transcoding_format">Formato transcodifica</string>
     <string name="playback_no_transcoding">Nessuna transcodifica</string>
+    <string name="playback_audio_offloading">Offload dell\'audio</string>
     <string name="playback_min_scrobble_percentage">Percentuale minima per scrobbling</string>
     <string name="settings_misc">Varie</string>
     <string name="misc_download_template">Template download</string>

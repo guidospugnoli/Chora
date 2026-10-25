@@ -27,6 +27,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -45,16 +46,20 @@ fun TvS_PlaybackScreen() {
     var showTranscodingFormatDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val playbackSettingsManager = remember { PlaybackSettingsManager(context) }
+
     val coroutineScope = rememberCoroutineScope()
 
-    val transcodingBitrateWifi by PlaybackSettingsManager(context).wifiTranscodingBitrateFlow.collectAsState("")
-    val transcodingBitrateData by PlaybackSettingsManager(context).mobileDataTranscodingBitrateFlow.collectAsState("")
-    val transcodingFormat by PlaybackSettingsManager(context).transcodingFormatFlow.collectAsState("opus")
+    val transcodingBitrateWifi by playbackSettingsManager.wifiTranscodingBitrateFlow.collectAsState("")
+    val transcodingBitrateData by playbackSettingsManager.mobileDataTranscodingBitrateFlow.collectAsState("")
+    val transcodingFormat by playbackSettingsManager.transcodingFormatFlow.collectAsState("opus")
     val transcodingFormatEnabled by remember {
         derivedStateOf {
             transcodingBitrateData != "No Transcoding" || transcodingBitrateWifi != "No Transcoding"
         }
     }
+
+    val offloadEnabled by playbackSettingsManager.audioOffloadEnabled.collectAsStateWithLifecycle(true)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -90,6 +95,19 @@ fun TvS_PlaybackScreen() {
         }
 
         item {
+            SettingsSwitchItem(
+                title = stringResource(R.string.playback_audio_offloading),
+                icon = ImageVector.vectorResource(R.drawable.rounded_replace_audio_24),
+                checked = offloadEnabled,
+                onCheckedChange = {
+                    coroutineScope.launch {
+                        playbackSettingsManager.setAudioOffload(it)
+                    }
+                }
+            )
+        }
+
+        item {
             val sliderValue by PlaybackSettingsManager(context).scrobblePercentFlow.collectAsState(7)
 
             Surface(
@@ -111,7 +129,7 @@ fun TvS_PlaybackScreen() {
                         value = sliderValue.toFloat(),
                         onValueChange = {
                             coroutineScope.launch {
-                                PlaybackSettingsManager(context).setScrobblePercent(it.roundToInt())
+                                playbackSettingsManager.setScrobblePercent(it.roundToInt())
                             }
                         },
                         valueRange = 0f..10f,
@@ -122,14 +140,14 @@ fun TvS_PlaybackScreen() {
                                 when (keyEvent.key) {
                                     Key.DirectionRight -> {
                                         coroutineScope.launch {
-                                            PlaybackSettingsManager(context).setScrobblePercent(sliderValue + 1)
+                                            playbackSettingsManager.setScrobblePercent(sliderValue + 1)
                                         }
                                         true
                                     }
 
                                     Key.DirectionLeft -> {
                                         coroutineScope.launch {
-                                            PlaybackSettingsManager(context).setScrobblePercent(sliderValue - 1)
+                                            playbackSettingsManager.setScrobblePercent(sliderValue - 1)
                                         }
                                         true
                                     }

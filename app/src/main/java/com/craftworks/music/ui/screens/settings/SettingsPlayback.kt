@@ -46,7 +46,7 @@ import com.craftworks.music.managers.settings.PlaybackSettingsManager
 import com.craftworks.music.ui.elements.dialogs.TranscodingBitrateDialog
 import com.craftworks.music.ui.elements.dialogs.TranscodingFormatDialog
 import com.craftworks.music.ui.elements.dialogs.dialogFocusable
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Preview(showSystemUi = false, showBackground = true)
@@ -56,6 +56,8 @@ import kotlin.math.roundToInt
 @Composable
 fun S_PlaybackScreen(navHostController: NavHostController = rememberNavController()) {
     val context = LocalContext.current
+
+    val playbackSettingsManager = remember { PlaybackSettingsManager(context)}
 
     var showWifiTranscodingDialog by remember { mutableStateOf(false) }
     var showDataTranscodingDialog by remember { mutableStateOf(false) }
@@ -110,7 +112,7 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     val transcodingBitrateWifi =
-                        PlaybackSettingsManager(context).wifiTranscodingBitrateFlow.collectAsState("").value
+                        playbackSettingsManager.wifiTranscodingBitrateFlow.collectAsState("").value
 
                     SettingsDialogButton(
                         settingsName = stringResource(R.string.playback_max_bitrate_wifi),
@@ -122,9 +124,7 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
 
 
                     val transcodingBitrateData =
-                        PlaybackSettingsManager(context).mobileDataTranscodingBitrateFlow.collectAsState(
-                            ""
-                        ).value
+                        playbackSettingsManager.mobileDataTranscodingBitrateFlow.collectAsState("").value
 
                     SettingsDialogButton(
                         settingsName = stringResource(R.string.playback_max_bitrate_mobile_data),
@@ -135,7 +135,7 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
                     )
 
                     val transcodingFormat =
-                        PlaybackSettingsManager(context).transcodingFormatFlow.collectAsState("opus").value
+                        playbackSettingsManager.transcodingFormatFlow.collectAsState("opus").value
 
                     val transcodingFormatEnabled =
                         (transcodingBitrateData != "No Transcoding" || transcodingBitrateWifi != "No Transcoding") && currentProvider != null
@@ -149,24 +149,22 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
                     )
                 }
 
-                /*
                 Column(
                     modifier = Modifier.clip(RoundedCornerShape(16.dp)),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    val autoPlay by PlaybackSettingsManager(context).autoPlayFlow.collectAsStateWithLifecycle(true)
+                    val audioOffload by playbackSettingsManager.audioOffloadEnabled.collectAsStateWithLifecycle(true)
                     SettingsSwitch(
-                        autoPlay,
-                        stringResource(R.string.Setting_LyricsAutoscroll),
-                        ImageVector.vectorResource(R.drawable.rounded_text_select_move_down_24),
+                        audioOffload,
+                        stringResource(R.string.playback_audio_offloading),
+                        ImageVector.vectorResource(R.drawable.rounded_replace_audio_24),
                         toggleEvent = {
                             coroutineScope.launch {
-                                PlaybackSettingsManager(context).setAutoPlay(!autoPlay)
+                                playbackSettingsManager.setAudioOffload(!audioOffload)
                             }
                         }
                     )
                 }
-                */
 
                 // Scrobble Percent
                 Column(
@@ -182,7 +180,7 @@ fun S_PlaybackScreen(navHostController: NavHostController = rememberNavControlle
                         steps = 8,
                         minValue = 1f, maxValue = 10f,
                         onValueChange = {
-                            runBlocking {
+                            coroutineScope.launch {
                                 PlaybackSettingsManager(context).setScrobblePercent(it.roundToInt())
                             }
                         }

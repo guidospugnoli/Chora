@@ -2,6 +2,7 @@ package com.craftworks.music.ui.elements
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -45,6 +47,7 @@ import com.craftworks.music.data.providers.media.local.LocalProviderData
 import com.craftworks.music.data.providers.media.subsonic.SubsonicMediaProvider
 import com.craftworks.music.managers.MediaProviderManager
 import com.craftworks.music.managers.settings.AppearanceSettingsManager
+import com.craftworks.music.managers.settings.MediaProviderSettingsManager
 import kotlinx.coroutines.runBlocking
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 
@@ -146,11 +149,33 @@ fun ReorderableCollectionItemScope.LyricsProviderCard(
     onEditClick: (() -> Unit) = { }
 ) {
     val type = provider.source
+    val context = LocalContext.current
+    val mediaProvider by MediaProviderManager.currentProvider.collectAsStateWithLifecycle()
+
+    val url = when (type) {
+        LyricSource.MEDIA_PROVIDER -> {
+            when (mediaProvider) {
+                is LocalMediaProvider -> stringResource(R.string.source_local_folder)
+                is SubsonicMediaProvider -> (mediaProvider as SubsonicMediaProvider).providerData.url
+                else -> ""
+            }
+        }
+        LyricSource.LRCLIB -> MediaProviderSettingsManager(context).lrcLibEndpointFlow.collectAsStateWithLifecycle("https://lrclib.net").value
+        LyricSource.LRCRED -> "https://lrc.red"
+        LyricSource.UNISON -> "https://unison.boidu.dev"
+        LyricSource.NETEASE -> "https://music.163.com"
+    }
+
+    val uriHandler = LocalUriHandler.current
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceBright),
+            .background(MaterialTheme.colorScheme.surfaceBright)
+            .clickable(
+                enabled = !(type == LyricSource.MEDIA_PROVIDER && mediaProvider is LocalMediaProvider),
+                onClick = { uriHandler.openUri(url) }
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
@@ -170,6 +195,11 @@ fun ReorderableCollectionItemScope.LyricsProviderCard(
                 text = type.displayName,
                 color = MaterialTheme.colorScheme.onBackground,
                 style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = url,
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
 

@@ -110,15 +110,20 @@ data class NeteaseLrc(
 )
 
 // LrcRed Lyrics
-//@Serializable
-//data class LrcRedSearchResponse(
-//    val results: List<BiniLyricsResult>
-//)
-//@Serializable
-//data class LrcRedResult(
-//    val timing_type: String,
-//    val lyricsUrl: String
-//)
+@Serializable
+data class LrcRedSearchResponse(
+    val hits: List<LrcRedResult>
+)
+@Serializable
+data class LrcRedResult(
+    val isrc: String,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val year: Int,
+    val duration: Double,
+    val cover: String,
+)
 
 // Unison Lyrics
 @Serializable
